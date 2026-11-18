@@ -19,3 +19,14 @@ calendar calculation, and the Boolean cache after the calculation. Set
 diagnostics. Multi-agent runs add the agent name and \code{next_year_shared}
 as published by the LANDIS-II extension. The \code{next_year} column
 reports the next year stored in each agent's own calendar.}
+
+\examples{
+\dontrun{
+# Prepare the extension with diagnostics enabled before running it.
+prepared <- bda_prepare_coupling(sim, parameters, trace_calendar = TRUE)
+run <- landisR::landis_sim(prepared$simulation,
+  extensions = list(bda = prepared$extension))
+calendar <- bda_calendar(run)
+head(calendar)
+}
+}

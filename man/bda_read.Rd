@@ -26,3 +26,12 @@ BDA mortality event on each site.
 \details{Put the first agent file on the \code{BDAInputFiles} line. Put each
 additional file on its own line immediately after it. Agent names must be
 distinct. The file order governs initialization and execution within each step.}
+
+\examples{
+\dontrun{
+# Resolve agent input paths relative to the LANDIS-II scenario directory.
+parameters <- bda_read("inputs/base-bda.txt",
+  scenario_directory = "inputs/scenarios/baseline/1")
+extension <- bda_extension(parameters)
+}
+}

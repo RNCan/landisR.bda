@@ -10,3 +10,11 @@
 \description{Reports the regional outbreak status, damaged sites, cohorts
 killed and mean severity rounded to two decimal places. Rows are ordered by year
 and by agent execution within each year.}
+
+\examples{
+\dontrun{
+# run is a coupled simulation with an extension named "bda".
+outbreaks <- bda_log(run)
+head(outbreaks)
+}
+}

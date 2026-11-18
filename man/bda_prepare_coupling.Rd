@@ -21,3 +21,15 @@ The calendar and shared Boolean cache then travel with the extension state.}
 \code{landisR::landis_sim()}. Place the extension at the desired position in the
 disturbance list. Resume with the saved simulation and extension state
 through the regular checkpoint API.}
+
+\examples{
+\dontrun{
+project <- landisR::landis_from_canonical("inputs/canonical")
+sim <- landisR::landis_initialize(project, recruitment_rng = "landis_v7")
+parameters <- bda_read("inputs/base-bda.txt")
+prepared <- bda_prepare_coupling(sim, parameters, trace_calendar = TRUE)
+run <- landisR::landis_sim(prepared$simulation,
+  extensions = list(bda = prepared$extension))
+bda_calendar(run)
+}
+}

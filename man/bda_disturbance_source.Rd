@@ -34,3 +34,21 @@ Use the plain Harvest extension to reproduce the stock field availability.
 No additional RNG draws are consumed by these adapters.
 }
 \value{A wrapped disturbance extension or an updated simulation.}
+
+\examples{
+grid <- data.frame(cell_id = 1L, row = 1L, col = 1L, active = TRUE)
+project <- landisR::landis_build_landscape(grid, duration = 10L,
+  cell_length = 100)
+sim <- landisR::landis_initialize(project)
+sim <- bda_publish_disturbance(sim, type = "fire",
+  sites = data.frame(cell_id = 1L, year = 0L, severity = 3L))
+
+# A disturbance can also publish the burned-cell table it returns.
+producer <- landisR::landis_extension(function(simulation, state, year) {
+  burned <- data.frame(cell_id = 1L, severity = 2L)
+  list(simulation = simulation, state = state, events = list(burned = burned))
+})
+fire_source <- bda_disturbance_source(producer, type = "fire")
+run <- landisR::landis_sim(sim, extensions = list(fire = fire_source),
+  progress = FALSE)
+}
