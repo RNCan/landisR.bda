@@ -1,0 +1,12 @@
+useDynLib(landisR.bda, .registration = TRUE)
+importFrom(Rcpp, evalCpp)
+export(bda_read)
+export(bda_extension)
+export(bda_maps)
+export(bda_log)
+export(bda_calendar)
+export(bda_publish_disturbance)
+export(bda_disturbance_source)
+export(bda_prepare_coupling)
+
+export(bda_build)
