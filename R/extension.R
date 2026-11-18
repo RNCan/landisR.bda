@@ -164,16 +164,22 @@ bda_extension <- function(parameters, trace_cells = integer(), trace_calendar = 
     state$history <- bda_update_history(state$history, result$event, state$topology$index)
     list(simulation = result$simulation, state = state, events = result$event)
   }
-  landisR::landis_extension(step, initialize, type = "disturbance")
+  structure(landisR::landis_extension(step, initialize, type = "disturbance"),
+            progress_label = "Base BDA")
 }
 
 bda_run_agent <- function(simulation, parameters, schedule, topology, year,
-                          trace_calendar, trace_dispersal, history) {
+                          trace_calendar, trace_dispersal, history,
+                          report = getOption("landisR.progress.report")) {
+  progress <- if (!is.null(report)) function(fraction, label)
+    report(fraction, paste0(parameters$agent, ": ", label))
+  if (!is.null(progress)) progress(0.01, "Reading hosts")
   forest <- landisR::landis_csr(simulation)
   disturbances <- simulation$bda_disturbances
   if (!is.null(history) && length(history$position)) disturbances$bda <- history
-  result <- bda_step_cpp(forest, parameters, schedule, topology, simulation$landis_rng,
-                         year, trace_calendar, trace_dispersal, disturbances)
+  result <- landisR::landis_progress_native(progress, 0.05, 0.84,
+    bda_step_cpp(forest, parameters, schedule, topology, simulation$landis_rng,
+                 year, trace_calendar, trace_dispersal, disturbances))
   event <- result$event
   simulation$landis_rng <- result$rng
   if (!is.null(event)) {
@@ -183,6 +189,7 @@ bda_run_agent <- function(simulation, parameters, schedule, topology, year,
     event$dimensions <- c(forest$nrow, forest$ncol)
     event$active_cells <- length(forest$cell_id)
     if (nrow(event$sites)) {
+      if (!is.null(progress)) progress(0.86, "Applying cohort mortality")
       survivors <- result$survivors
       survivors$species <- forest$species[survivors$species]
       simulation <- landisR::landis_apply_cohort_batch(
@@ -190,9 +197,11 @@ bda_run_agent <- function(simulation, parameters, schedule, topology, year,
         event_metadata = list(list(extension = "Base BDA", year = year,
                                    agent = parameters$agent, cells = event$sites$cell_id)),
         preserve_cohort_order = TRUE)
+      if (!is.null(progress)) progress(0.93, "Scheduling regeneration")
       simulation <- landisR::landis_schedule_regeneration(simulation, event$cohorts_killed)
     }
   }
+  if (!is.null(progress)) progress(0.98, "Updating outbreak history")
   list(simulation = simulation, schedule = result$schedule, event = event,
        calendar = result$calendar, pulse = result$pulse)
 }

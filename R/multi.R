@@ -60,6 +60,7 @@ bda_multi_extension <- function(parameters, trace_cells, trace_calendar, trace_d
   }
 
   step <- function(simulation, state, year) {
+    report <- getOption("landisR.progress.report")
     if (is.null(state$cache)) {
       initial_year <- year - parameters$timestep
       initial <- bda_prime_agents(agents, simulation$landis_rng, trace_calendar, initial_year)
@@ -69,10 +70,12 @@ bda_multi_extension <- function(parameters, trace_cells, trace_calendar, trace_d
     events <- calendar <- structure(vector("list", length(agents)), names = names(agents))
     sd_fields <- names(state$cache)
     for (i in seq_along(agents)) {
+      agent_report <- if (!is.null(report)) function(fraction, label)
+        report((i - 1 + fraction) / length(agents), label)
       agent_state <- state$agents[[i]]
       result <- bda_run_agent(simulation, agents[[i]], c(agent_state$schedule, state$cache),
                               c(state$grid, agent_state$topology), year,
-                              trace_calendar, trace_dispersal, state$history)
+                              trace_calendar, trace_dispersal, state$history, agent_report)
       simulation <- result$simulation
       state$cache <- result$schedule[sd_fields]
       state$agents[[i]]$schedule <- result$schedule[!names(result$schedule) %in% sd_fields]
@@ -92,5 +95,6 @@ bda_multi_extension <- function(parameters, trace_cells, trace_calendar, trace_d
          events = if (length(events)) events else NULL)
   }
 
-  landisR::landis_extension(step, initialize, type = "disturbance")
+  structure(landisR::landis_extension(step, initialize, type = "disturbance"),
+            progress_label = "Base BDA")
 }

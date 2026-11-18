@@ -74,5 +74,6 @@ bda_disturbance_source <- function(extension, type) {
     result$simulation <- bda_publish_disturbance(result$simulation, type, sites)
     result
   }
-  landisR::landis_extension(step, extension$initialize, type = "disturbance")
+  structure(landisR::landis_extension(step, extension$initialize, type = "disturbance"),
+            progress_label = attr(extension, "progress_label", exact = TRUE))
 }

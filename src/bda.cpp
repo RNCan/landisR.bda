@@ -2,6 +2,7 @@
 // Algorithm references: PlugIn.cs, SiteResources.cs and Epidemic.cs.
 #include <Rcpp.h>
 #include <landisR/mt19937.hpp>
+#include <landisR/progress.hpp>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -362,6 +363,8 @@ List bda_prime_cpp(const List& config, const List& rng_state, bool trace_calenda
 List bda_step_cpp(const List& forest, const List& config, const List& schedule,
                   const List& topology, const List& rng_state, int year, bool trace_calendar = false,
                   bool trace_dispersal = false, Nullable<List> disturbances = R_NilValue) {
+  landis_progress::Reporter progress;
+  progress.phase(0, "Outbreak calendar");
   landis_rng::Stream rng(0);
   rng.draws = landis_rng::Stream::offset(as<double>(rng_state["offset"]));
   rng.restore(as<std::string>(rng_state["state"]));
@@ -453,7 +456,9 @@ List bda_step_cpp(const List& forest, const List& config, const List& schedule,
   std::vector<double> oldest(parameters.nrow(), 0);
   std::vector<double> srd(n), modified(n), nrd(n, 0), vulnerability(n);
   const bool mean_srd = config["mean_srd"];
+  progress.start(0.08, 0.30, "Host resources (SRD)", n);
   for (int i = 0; i < n; ++i) {
+    progress.advance(i);
     const int state = cell_state[i] - 1;
     if (!computed[state]) {
       std::fill(oldest.begin(), oldest.end(), 0);
@@ -484,6 +489,7 @@ List bda_step_cpp(const List& forest, const List& config, const List& schedule,
   std::vector<Zone> zone(spatial ? n : 0, no_zone);
   List dispersion;
   if (spatial) {
+    progress.phase(0.30, "Outbreak dispersal");
     for (int i = 0; i < n; ++i) vulnerability[i] = std::max(0.0, scale * modified[i]);
     const List settings = config["dispersal"];
     const double distance = as<double>(settings["rate"]) * timestep;
@@ -499,7 +505,10 @@ List bda_step_cpp(const List& forest, const List& config, const List& schedule,
     struct Neighbor { int site, offset; };
     std::vector<Neighbor> neighborhood;
     neighborhood.reserve(deltas.nrow());
+    progress.start(0.47, 0.77, "Neighborhood (NRD)", order.size());
+    std::size_t visited = 0;
     for (int i : order) {
+      progress.advance(visited++);
       if (!(srd[i] > 0)) continue;
       neighborhood.clear();
       if (!spatial || zone[i] == new_zone) {
@@ -544,7 +553,10 @@ List bda_step_cpp(const List& forest, const List& config, const List& schedule,
   std::vector<double> trace_srd, trace_modified, trace_nrd, trace_bdp, trace_draw;
   std::vector<bool> death;
   double severity_total = 0;
+  progress.start(0.77, 0.95, "Severity & mortality", order.size());
+  std::size_t visited = 0;
   for (int i : order) {
+    progress.advance(visited++);
     const double u = rng.next_double();
     const double bdp = vulnerability[i];
     int final_severity = 0;
@@ -599,6 +611,7 @@ List bda_step_cpp(const List& forest, const List& config, const List& schedule,
       trace_draw.push_back(u);
     }
   }
+  progress.phase(0.96, "Writing outbreak diagnostics");
   output["event"] = List::create(
     _["ros"] = ros, _["mean_severity"] = damaged.empty() ? 0 : severity_total / damaged.size(),
     _["sites"] = DataFrame::create(_["cell_id"] = damaged, _["severity"] = severity,

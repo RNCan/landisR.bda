@@ -34,4 +34,6 @@ before the first disturbance step. A multi-agent run stores events for each
 year by agent name, for example \code{run$events$bda[["10"]][["budworm"]]}.
 Single-agent runs keep an event directly under each year.
 Each agent reads cohort mortality applied by earlier agents in that step.
+The coupled progress bar identifies Base BDA while it runs. Control
+display with the progress argument of \code{landisR::landis_sim()}.
 Call \code{bda_log()} for the combined event table.}
