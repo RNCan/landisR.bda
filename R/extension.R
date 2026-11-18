@@ -210,13 +210,17 @@ bda_maps <- function(event) {
   result
 }
 
-bda_log <- function(run, extension = "bda") {
+bda_log_events <- function(run, extension) {
   if (!inherits(run, "landisR_coupled_run") || !extension %in% names(run$events))
     stop("Expected a landis_sim() run containing the named Base BDA extension.",
          call. = FALSE)
   events <- unname(run$events[[extension]])
   if (!is.null(run$extension_states[[extension]]$agents))
     events <- do.call(c, events)
+  events
+}
+
+bda_format_log <- function(events) {
   data.frame(
     Time = vapply(events, function(e) e$year, integer(1L)),
     ROS = vapply(events, function(e) e$ros, integer(1L)),
@@ -226,6 +230,54 @@ bda_log <- function(run, extension = "bda") {
     MeanSeverity = vapply(events, function(e) floor(100 * e$mean_severity + 0.5) / 100,
                           numeric(1L))
   )
+}
+
+bda_log <- function(run, extension = "bda") {
+  bda_format_log(bda_log_events(run, extension))
+}
+
+bda_killed_density <- function(event) {
+  if (!nrow(event$cohorts_killed)) return(0)
+  density <- event$sites$biomass_killed
+  if (is.null(density)) density <- event$cohorts_killed$biomass
+  if (is.null(density)) NA_real_ else sum(density)
+}
+
+bda_mortality_by_species <- function(events, area_mg) {
+  empty <- data.frame(Time = integer(), AgentName = character(), species = character(),
+                      CohortsKilled = integer(), MgBiomassKilled = numeric())
+  rows <- lapply(events, function(event) {
+    killed <- event$cohorts_killed
+    n <- nrow(killed)
+    if (!n) return(NULL)
+    if (is.null(killed$species) || anyNA(killed$species)) {
+      return(data.frame(Time = event$year, AgentName = event$agent, species = NA_character_,
+                        CohortsKilled = n, MgBiomassKilled = bda_killed_density(event) * area_mg))
+    }
+    density <- if (is.null(killed$biomass)) rep(NA_real_, n) else killed$biomass
+    groups <- rowsum(cbind(cohorts = rep.int(1L, n), density = density),
+                     killed$species)
+    data.frame(Time = event$year, AgentName = event$agent, species = rownames(groups),
+               CohortsKilled = as.integer(groups[, "cohorts"]),
+               MgBiomassKilled = unname(groups[, "density"]) * area_mg)
+  })
+  result <- do.call(rbind, c(list(empty), rows))
+  rownames(result) <- NULL
+  result
+}
+
+bda_mortality <- function(run, extension = "bda", by_species = FALSE) {
+  if (!isTRUE(by_species) && !identical(by_species, FALSE))
+    stop("by_species must be TRUE or FALSE.", call. = FALSE)
+  events <- bda_log_events(run, extension)
+  simulation <- run$simulation
+  # Biomass Succession stores cohort density in g/m2. Return Mg per epidemic.
+  area_mg <- if (identical(simulation$growth_engine$id, "biomass52"))
+    simulation$project$canonical$cell_length^2 / 1e6 else NA_real_
+  if (by_species) return(bda_mortality_by_species(events, area_mg))
+  log <- bda_format_log(events)
+  log$MgBiomassKilled <- vapply(events, bda_killed_density, numeric(1L)) * area_mg
+  log
 }
 
 bda_calendar <- function(run, extension = "bda") {

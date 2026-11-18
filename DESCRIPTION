@@ -1,7 +1,7 @@
 Package: landisR.bda
 Type: Package
 Title: Base Biological Disturbance Agents for landisR
-Version: 0.0.0.9009
+Version: 0.0.0.9011
 Authors@R: person("Yan", "Boulanger", email = "yan.boulanger@nrcan.gc.ca", role = c("aut", "cre"))
 Description: Implements outbreaks and spatial dispersal for one or more agents from the
     LANDIS-II 4.0.1 Base Biological Disturbance Agent extension. It evaluates
